@@ -1,36 +1,37 @@
-import streamlit as st
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import streamlit as st
 import torch
 
-# Load pre-trained model and tokenizer from Hugging Face
-model = AutoModelForSequenceClassification.from_pretrained("nlpaueb/legal-bert-base-uncased", num_labels=41)
-tokenizer = AutoTokenizer.from_pretrained("nlpaueb/legal-bert-base-uncased")
+# ✅ Replace restricted model with public one
+model = AutoModelForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=5)
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
-# Define class-to-label mapping (assuming 41 classes for legal clauses)
+# Dummy clause labels
 id2label = {
-    0: 'Clause 1', 1: 'Clause 2', 2: 'Clause 3',  # Add all class names here
-    40: 'Clause 41'  # Example, fill in actual classes from the dataset
+    0: "Confidentiality",
+    1: "Termination",
+    2: "Governing Law",
+    3: "Liability",
+    4: "Payment Terms"
 }
 
-# Function to predict clause type
 def predict_clause(text):
-    # Tokenize input
     inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
-    # Get model prediction
     with torch.no_grad():
         outputs = model(**inputs)
-    predictions = torch.argmax(outputs.logits, dim=-1)
-    return predictions.item()
+    pred = torch.argmax(outputs.logits, dim=-1)
+    return id2label[pred.item()]
 
-# Streamlit UI
-st.title("Legal Clause Detector")
-st.markdown("Enter a contract clause below to detect its type:")
+# Streamlit App UI
+st.set_page_config(page_title="Legal Clause Detector", page_icon="📜")
+st.title("📜 Legal Clause Detector")
+st.write("Paste a clause below and detect its type.")
 
-user_input = st.text_area("Enter Contract Clause:", "")
-if st.button("Detect Clause"):
-    if user_input:
-        prediction = predict_clause(user_input)
-        clause_type = id2label.get(prediction, "Unknown")
-        st.success(f"Predicted Clause Type: {clause_type}")
+clause = st.text_area("Enter legal clause:")
+
+if st.button("Detect"):
+    if clause.strip() == "":
+        st.warning("Please enter a clause to analyze.")
     else:
-        st.error("Please enter a contract clause.")
+        result = predict_clause(clause)
+        st.success(f"Detected Clause Type: **{result}**")
